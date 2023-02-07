@@ -1,0 +1,1 @@
+cog predict -i mode="gpt3" -i question="What is the meaning of life?"

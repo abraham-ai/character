@@ -1,0 +1,28 @@
+build:
+  gpu: true
+  cuda: "11.6.2"
+  python_version: "3.9.5"
+
+  system_packages:
+    - "libgl1-mesa-glx"
+    - "libglib2.0-0"
+    - "ffmpeg"
+    - "cmake"
+
+  python_packages:
+    - "numba==0.56.4"
+    - "numpy==1.23.5"
+    - "Pillow==9.4.0"
+    - "opencv-contrib-python==4.7.0.68"
+    - "opencv-python==4.7.0.68"
+    - "librosa==0.9.2"
+    - "tqdm==4.64.1"
+    - "openai==0.25.0"
+
+  pre_install:    
+    - git clone https://github.com/genekogan/Wav2Lip
+    - pip install torch==1.9.0 --extra-index-url=https://download.pytorch.org/whl/cu111
+
+predict: "predict.py:Predictor"
+
+image: "r8.im/abraham-ai/character"
