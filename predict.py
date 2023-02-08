@@ -22,7 +22,7 @@ def download(url, folder, ext):
     return filepath
 
 
-def run_wav2lip(face_url, speech_url, gfpgan):
+def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
     if not face_url or not speech_url:
         raise Exception("Missing face or speech file")
 
@@ -67,7 +67,7 @@ def run_wav2lip(face_url, speech_url, gfpgan):
         cmd = f'python /GFPGAN/inference_gfpgan.py \
                 --model_path gfpgan \
                 -o {temp_gfpgan_frames_dir} \
-                -v 1.3 -s 2 --bg_upsampler none \
+                -v 1.3 -s {gfpgan_upscale} --bg_upsampler none \
                 -i "{temp_frames_dir}" '
 
         result = os.system(cmd)
@@ -129,6 +129,11 @@ class Predictor(BasePredictor):
             description="Whether to apply GFPGAN to the Wav2Lip output",
             default=True,
         ),
+        gfpgan_upscale: float = Input(
+            description="Upscale factor (only used if GFPGAN is enabled)",
+            default=1.0,
+            choices=[1.0, 2.0],
+        ),
         prompt: str = Input(
             description="GPT-3 prompt",
             default=None,
@@ -145,7 +150,7 @@ class Predictor(BasePredictor):
     ) -> Path:
 
         if mode == "wav2lip":
-            output_file = run_wav2lip(face_url, speech_url, gfpgan)
+            output_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
             return output_file
 
         elif mode == "complete":
