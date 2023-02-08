@@ -28,10 +28,8 @@ build:
     - "realesrgan"
 
   pre_install:    
-    - git clone https://github.com/genekogan/Wav2Lip && echo 22
-    # - pip install torch==1.9.0 --extra-index-url=https://download.pytorch.org/whl/cu111
-    - git clone https://github.com/genekogan/GFPGAN && echo 1234
-    
+    - git clone https://github.com/genekogan/Wav2Lip && echo 12345
+    - git clone https://github.com/genekogan/GFPGAN && echo 12345
 
 predict: "predict.py:Predictor"
 

@@ -82,6 +82,11 @@ def run_wav2lip(face_url, speech_url, gfpgan):
         if result != 0:
             raise Exception("ffmpeg failed")
 
+    # cleanup
+    os.system(f'rm {temp_video_file}')
+    os.system(f'rm -rf {temp_frames_dir}')
+    os.system(f'rm -rf {temp_gfpgan_frames_dir}')
+
     return output_file
 
 
