@@ -1,6 +1,7 @@
 .env
 data/*.*
 wav2lip_files/
+gfpgan/
 .torch/
 __pycache__/
 temp/
