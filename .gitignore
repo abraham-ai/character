@@ -1,0 +1,12 @@
+.env
+data/*.*
+wav2lip_files/
+.torch/
+__pycache__/
+temp/
+wav2lip-hq/
+Wav2Lip/
+out/
+logs.log
+log.txt
+.cog

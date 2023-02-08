@@ -4,7 +4,7 @@ import tempfile
 import requests
 from PIL import Image
 
-from gpt3 import get_gpt3_answer
+from gpt3 import complete
 
 os.environ["TORCH_HOME"] = "/src/.torch"
 
@@ -67,7 +67,7 @@ class Predictor(BasePredictor):
         self,
         mode: str = Input(
             description="Mode",
-            choices=["wav2lip", "gpt3"]
+            choices=["wav2lip", "complete"]
         ),
         face_url: str = Input(
             description="Image of the face to render", 
@@ -77,9 +77,17 @@ class Predictor(BasePredictor):
             description="The audio file containing speech to be lip-synced",
             default=None,
         ),
-        question: str = Input(
-            description="Question to ask GPT-3",
+        prompt: str = Input(
+            description="GPT-3 prompt",
             default=None,
+        ),
+        max_tokens: int = Input(
+            description="Maximum number of tokens to generate with GPT-3",
+            default=150,
+        ),
+        temperature: float = Input(
+            description="Temperature for GPT-3",
+            default=0.9,
         ),
 
     ) -> Path:
@@ -88,10 +96,11 @@ class Predictor(BasePredictor):
             output_file = run_wav2lip(face_url, speech_url)
             return output_file
 
-        elif mode == "gpt3":
-            if not question:
+        elif mode == "complete":
+            if not prompt:
                 raise Exception("Question must be provided")
-            completion = get_gpt3_answer(question)
+            stops = ['\nQuestion', '\nAnswer', '\n', 'Question:']
+            completion = complete(prompt, stops, max_tokens=max_tokens, temperature=temperature)
             output_file = Path(tempfile.mkdtemp()) / 'output.txt'
             with open(output_file, 'w') as f:
                 f.write(completion)

@@ -1,0 +1,1 @@
+cog predict -i mode="complete" -i prompt="The meaning of life is"
