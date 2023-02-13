@@ -29,7 +29,7 @@ class CogOutput(BaseModel):
 
 
 def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
-    if not face_url or not speech_url:
+    if not face_url or not speech_url:  
         raise Exception("Missing face or speech file")
 
     try:
@@ -157,12 +157,12 @@ class Predictor(BasePredictor):
 
         if mode == "wav2lip":
             output_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
-            return CogOutput(file=output_file, thumbnail=None, attributes={})
+            return CogOutput(file=output_file, thumbnail=output_file, attributes={})
 
         elif mode == "complete":
             output_file, completion = run_complete(prompt, max_tokens, temperature)
             attributes = {"completion": completion}
-            return CogOutput(file=output_file, thumbnail=None, attributes=attributes)
+            return CogOutput(file=output_file, thumbnail=output_file, attributes=attributes)
 
         else:
             raise Exception("Invalid mode")
