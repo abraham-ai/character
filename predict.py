@@ -1,4 +1,4 @@
-from cog import BasePredictor, Path, Input
+from cog import BasePredictor, BaseModel, Path, Input
 import os
 import tempfile
 import requests
@@ -20,6 +20,12 @@ def download(url, folder, ext):
     with open(filepath, 'wb') as f:
         f.write(raw_file.read())
     return filepath
+
+
+class CogOutput(BaseModel):
+    file: Path
+    thumbnail: Path
+    attributes: dict
 
 
 def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
@@ -103,7 +109,7 @@ def run_complete(prompt, max_tokens, temperature):
     with open(output_file, 'w') as f:
         f.write(completion)
 
-    return output_file
+    return output_file, completion
 
 
 class Predictor(BasePredictor):
@@ -129,10 +135,10 @@ class Predictor(BasePredictor):
             description="Whether to apply GFPGAN to the Wav2Lip output",
             default=True,
         ),
-        gfpgan_upscale: float = Input(
+        gfpgan_upscale: int = Input(
             description="Upscale factor (only used if GFPGAN is enabled)",
-            default=1.0,
-            choices=[1.0, 2.0],
+            default=1,
+            choices=[1, 2],
         ),
         prompt: str = Input(
             description="GPT-3 prompt",
@@ -147,15 +153,16 @@ class Predictor(BasePredictor):
             default=0.9,
         ),
 
-    ) -> Path:
+    ) -> CogOutput:
 
         if mode == "wav2lip":
             output_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
-            return output_file
+            return CogOutput(file=output_file, thumbnail=None, attributes={})
 
         elif mode == "complete":
-            output_file = run_complete(prompt, max_tokens, temperature)
-            return output_file
+            output_file, completion = run_complete(prompt, max_tokens, temperature)
+            attributes = {"completion": completion}
+            return CogOutput(file=output_file, thumbnail=None, attributes=attributes)
 
         else:
             raise Exception("Invalid mode")
