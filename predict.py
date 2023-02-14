@@ -3,6 +3,7 @@ import os
 import tempfile
 import requests
 from PIL import Image
+from typing import Iterator, Optional
 
 from gpt3 import complete
 
@@ -24,8 +25,11 @@ def download(url, folder, ext):
 
 class CogOutput(BaseModel):
     file: Path
-    thumbnail: Path
-    attributes: dict
+    name: Optional[str] = None
+    thumbnail: Optional[Path] = None
+    attributes: Optional[dict] = None
+    progress: Optional[float] = None
+    isFinal: bool = False
 
 
 def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
@@ -153,16 +157,16 @@ class Predictor(BasePredictor):
             default=0.9,
         ),
 
-    ) -> CogOutput:
+    ) -> Iterator[CogOutput]:
 
         if mode == "wav2lip":
             output_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
-            return CogOutput(file=output_file, thumbnail=output_file, attributes={})
+            yield CogOutput(file=output_file, name="wav2lip", thumbnail=output_file, attributes=None, progress=1.0, isFinal=True)
 
         elif mode == "complete":
             output_file, completion = run_complete(prompt, max_tokens, temperature)
             attributes = {"completion": completion}
-            return CogOutput(file=output_file, thumbnail=output_file, attributes=attributes)
+            yield CogOutput(file=output_file, name=completion, thumbnail=output_file, attributes=attributes, progress=1.0, isFinal=True)
 
         else:
             raise Exception("Invalid mode")
