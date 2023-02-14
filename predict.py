@@ -159,11 +159,15 @@ class Predictor(BasePredictor):
 
     ) -> Iterator[CogOutput]:
 
+        print(f"Running in {mode} mode")
+
         if mode == "wav2lip":
+            print(f"face_url: {face_url}, speech_url: {speech_url}")
             output_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
             yield CogOutput(file=output_file, name="wav2lip", thumbnail=output_file, attributes=None, progress=1.0, isFinal=True)
 
         elif mode == "complete":
+            print(f"prompt: {prompt}, max_tokens: {max_tokens}, temperature: {temperature}")
             output_file, completion = run_complete(prompt, max_tokens, temperature)
             attributes = {"completion": completion}
             yield CogOutput(file=output_file, name=completion, thumbnail=output_file, attributes=attributes, progress=1.0, isFinal=True)
