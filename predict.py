@@ -23,6 +23,11 @@ def download(url, folder, ext):
     return filepath
 
 
+def try_delete(path):
+    if os.path.exists(path):
+        os.remove(path)
+
+
 class CogOutput(BaseModel):
     file: Path
     name: Optional[str] = None
@@ -93,9 +98,9 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
             raise Exception("ffmpeg failed")
 
     # cleanup
-    os.system(f'rm {temp_video_file}')
-    os.system(f'rm -rf {temp_frames_dir}')
-    os.system(f'rm -rf {temp_gfpgan_frames_dir}')
+    try_delete(temp_video_file)
+    try_delete(temp_frames_dir)
+    try_delete(temp_gfpgan_frames_dir)
 
     return output_file
 
@@ -119,6 +124,7 @@ def run_complete(prompt, max_tokens, temperature):
 class Predictor(BasePredictor):
 
     def setup(self):
+        print("cog:setup")
         pass
 
     def predict(
@@ -159,6 +165,7 @@ class Predictor(BasePredictor):
 
     ) -> Iterator[CogOutput]:
 
+        print("cog:predict")
         print(f"Running in {mode} mode")
 
         if mode == "wav2lip":
