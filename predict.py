@@ -101,9 +101,9 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
             raise Exception("ffmpeg failed")
 
     # cleanup
-    try_delete(temp_video_file)
-    try_delete(temp_frames_dir)
-    try_delete(temp_gfpgan_frames_dir)
+    #try_delete(temp_video_file)
+    #try_delete(temp_frames_dir)
+    #try_delete(temp_gfpgan_frames_dir)
 
     return output_file
 
