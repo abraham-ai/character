@@ -1,5 +1,6 @@
 from cog import BasePredictor, BaseModel, Path, Input
 import os
+import shutil
 import tempfile
 import requests
 from PIL import Image
@@ -24,8 +25,10 @@ def download(url, folder, ext):
 
 
 def try_delete(path):
-    if os.path.exists(path):
+    if os.path.isfile(path):
         os.remove(path)
+    elif os.path.isdir(path):
+        shutil.rmtree(path)
 
 
 class CogOutput(BaseModel):
