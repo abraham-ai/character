@@ -102,14 +102,18 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
 
         print("ffmpeg finished")
 
+        # cleanup
+        try_delete(temp_gfpgan_frames_dir)
+
     # cleanup
-    #try_delete(temp_video_file)
-    #try_delete(temp_frames_dir)
-    #try_delete(temp_gfpgan_frames_dir)
+    try_delete(temp_video_file)
+    try_delete(temp_frames_dir)
 
     print("return output_file: ", str(output_file))
+    
+    face_file = Path(face_file)
 
-    return output_file
+    return output_file, face_file
 
 
 def run_complete(prompt, max_tokens, temperature):
@@ -177,10 +181,8 @@ class Predictor(BasePredictor):
 
         if mode == "wav2lip":
             print(f"face_url: {face_url}, speech_url: {speech_url}")
-            output_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
-            face_url_path = Path(face_url)
-            print("output_file received: ", output_file)
-            yield CogOutput(file=output_file, name="wav2lip", thumbnail=face_url_path, attributes=None, progress=1.0, isFinal=True)
+            output_file, face_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
+            yield CogOutput(file=output_file, name="wav2lip", thumbnail=face_file, attributes=None, progress=1.0, isFinal=True)
 
         elif mode == "complete":
             print(f"prompt: {prompt}, max_tokens: {max_tokens}, temperature: {temperature}")
