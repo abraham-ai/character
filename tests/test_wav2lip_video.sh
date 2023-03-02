@@ -1,0 +1,1 @@
+cog predict -i mode="wav2lip" -i face_url="https://storage.googleapis.com/public-assets-xander/Random/remove/real2real__marzipan.mp4" -i speech_url="https://minio.aws.abraham.fun/creations-stg/51b0e36c5fc24d2d7b543ce4e578421dd7818a4a02b862a54012f88ccca82021" -i gfpgan=1 -i gfpgan_upscale=2

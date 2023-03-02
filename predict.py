@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import requests
+import cv2
 from PIL import Image
 from typing import Iterator, Optional
 
@@ -14,7 +15,9 @@ DATA_DIR = Path('data')
 
 
 def download(url, folder, ext):
-    filename = url.split('/')[-1]+ext
+    filename = url.split('/')[-1]
+    if not filename.endswith(ext):
+        filename += ext
     filepath = folder / filename
     if filepath.exists():
         return filepath
@@ -45,7 +48,8 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
         raise Exception("Missing face or speech file")
 
     try:
-        face_file = download(face_url, DATA_DIR, '.jpg')
+        ext = os.path.splitext(face_url)[1]
+        face_file = download(face_url, DATA_DIR, ext)
     except Exception as e:
         raise Exception(f"Error downloading image file: {e}")
 
@@ -62,18 +66,22 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
     fps = 25
     output_mode = 'frames' if gfpgan else 'audiovideo'
 
+    # if it's a video, switch fps to video fps
+    if ext.lower() in ['.mp4', '.mov', '.avi', '.wmv', '.mkv']:
+        cap = cv2.VideoCapture(str(face_file))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
     # run wav2lip
     cmd = f'python /Wav2Lip/inference.py \
             --output "{output_mode}" \
             --checkpoint_path "wav2lip_files/wav2lip_gan.pth" \
             --fps {fps} \
             --face "{face_file}" \
-            --static 1 \
             --audio "{speech_file}" \
             --temp_frames_dir "{temp_frames_dir}" \
             --temp_video_file "{temp_video_file}" \
             --outfile "{output_file}"'
-
+    
     result = os.system(cmd)
     if result != 0:
         raise Exception("Wav2Lip failed")
@@ -92,7 +100,7 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
         if result != 0:
             raise Exception("GFPGAN failed")
 
-        cmd = f'ffmpeg -y -i {speech_file} \
+        cmd = f'ffmpeg -y -i {speech_file} -framerate {fps} \
                 -i {temp_gfpgan_frames_dir}/restored_imgs/f%05d.png \
                 -r {fps} -c:v libx264 -pix_fmt yuv420p {output_file}'
 
@@ -174,7 +182,7 @@ class Predictor(BasePredictor):
             default=0.9,
         ),
 
-    ) -> Iterator[CogOutput]:
+    ) -> Iterator[Path]: #Iterator[CogOutput]:
 
         print("cog:predict")
         print(f"Running in {mode} mode")
@@ -182,13 +190,15 @@ class Predictor(BasePredictor):
         if mode == "wav2lip":
             print(f"face_url: {face_url}, speech_url: {speech_url}")
             output_file, face_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
-            yield CogOutput(file=output_file, name="wav2lip", thumbnail=face_file, attributes=None, progress=1.0, isFinal=True)
+            #yield CogOutput(file=output_file, name="wav2lip", thumbnail=face_file, attributes=None, progress=1.0, isFinal=True)
+            yield output_file
 
         elif mode == "complete":
             print(f"prompt: {prompt}, max_tokens: {max_tokens}, temperature: {temperature}")
             output_file, completion = run_complete(prompt, max_tokens, temperature)
             attributes = {"completion": completion}
-            yield CogOutput(file=output_file, name=completion, thumbnail=None, attributes=attributes, progress=1.0, isFinal=True)
+            #yield CogOutput(file=output_file, name=completion, thumbnail=None, attributes=attributes, progress=1.0, isFinal=True)
+            yield output_file
 
         else:
             raise Exception("Invalid mode")
