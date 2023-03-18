@@ -138,7 +138,7 @@ class Predictor(BasePredictor):
         intro_text: str = Input(
             description="Text for introduction screen (optional)",
             default=None,
-        ),
+        )
 
     ) -> Iterator[CogOutput]:
 
