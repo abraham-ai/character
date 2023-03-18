@@ -42,8 +42,8 @@ def make_black_frame_video(width, height, duration, fps, text, output_file):
     surface = gz.Surface(width=width, height=height)
 
     font = "Arial"
-    fontsize = height//20
-    num_words_per_line = 7
+    fontsize = width//20
+    num_words_per_line = 5
 
     # Split the text into lines of 8 words    
     words = text.split()
