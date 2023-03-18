@@ -26,6 +26,9 @@ build:
     - "yapf"
     - "torchvision"
     - "realesrgan"
+    - "moviepy"
+    - "gizeh"
+    - "cairocffi"
 
   pre_install:    
     - git clone https://github.com/genekogan/Wav2Lip && echo 12345

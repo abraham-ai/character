@@ -1,38 +1,13 @@
 from cog import BasePredictor, BaseModel, Path, Input
 import os
-import shutil
-import tempfile
-import requests
-import cv2
 from PIL import Image
 from typing import Iterator, Optional
-
-from gpt3 import complete
+import tempfile
+import utils
 
 os.environ["TORCH_HOME"] = "/src/.torch"
 
 DATA_DIR = Path('data')
-
-
-def download(url, folder, ext):
-    filename = url.split('/')[-1]
-    if not filename.endswith(ext):
-        filename += ext
-    filepath = folder / filename
-    if filepath.exists():
-        return filepath
-    raw_file = requests.get(url, stream=True).raw
-    with open(filepath, 'wb') as f:
-        f.write(raw_file.read())
-    return filepath
-
-
-def try_delete(path):
-    if os.path.isfile(path):
-        os.remove(path)
-    elif os.path.isdir(path):
-        shutil.rmtree(path)
-
 
 class CogOutput(BaseModel):
     file: Path
@@ -42,24 +17,24 @@ class CogOutput(BaseModel):
     progress: Optional[float] = None
     isFinal: bool = False
 
-
-def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
+def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text=None):
     if not face_url or not speech_url:  
         raise Exception("Missing face or speech file")
 
     try:
         ext = os.path.splitext(face_url)[1]
-        face_file = download(face_url, DATA_DIR, ext)
+        face_file = utils.download(face_url, DATA_DIR, ext)
     except Exception as e:
         raise Exception(f"Error downloading image file: {e}")
 
     try:
-        speech_file = download(speech_url, DATA_DIR, '.wav')
+        speech_file = utils.download(speech_url, DATA_DIR, '.wav')
     except Exception as e:
         raise Exception(f"Error downloading speech file: {e}")
 
     # setup file paths
     out_dir = Path(tempfile.mkdtemp())
+    # out_dir = Path('results')
     temp_video_file = out_dir / 'wav2lip_temp.avi'
     temp_frames_dir = out_dir / 'frames'
     output_file = out_dir / 'output.mp4'
@@ -107,37 +82,28 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale):
         result = os.system(cmd)
         if result != 0:
             raise Exception("ffmpeg failed")
-
         print("ffmpeg finished")
 
         # cleanup
-        try_delete(temp_gfpgan_frames_dir)
+        utils.try_delete(temp_gfpgan_frames_dir)
+
+    if intro_text:
+        output_file_prepended = out_dir / 'output_prepended.mp4'
+        width, height, fps = utils.get_video_dimensions(output_file)
+        duration = 5
+        temp_black_frame_file = out_dir / 'black_frame.mp4'
+        utils.make_black_frame_video(width, height, duration, fps, intro_text, temp_black_frame_file)
+        utils.concatenate_videos(temp_black_frame_file, output_file, output_file_prepended)
+        output_file = output_file_prepended
+        utils.try_delete(temp_black_frame_file)
 
     # cleanup
-    try_delete(temp_video_file)
-    try_delete(temp_frames_dir)
+    utils.try_delete(temp_video_file)
+    utils.try_delete(temp_frames_dir)
 
-    print("return output_file: ", str(output_file))
-    
     face_file = Path(face_file)
 
     return output_file, face_file
-
-
-def run_complete(prompt, max_tokens, temperature):
-    if not prompt:
-        raise Exception("Question must be provided")
-
-    out_dir = Path(tempfile.mkdtemp())
-    output_file = out_dir / 'output.txt'
-
-    stops = ['\nQuestion', '\nAnswer', '\n', 'Question:']
-    completion = complete(prompt, stops, max_tokens=max_tokens, temperature=temperature)
-
-    with open(output_file, 'w') as f:
-        f.write(completion)
-
-    return output_file, completion
 
 
 class Predictor(BasePredictor):
@@ -150,7 +116,7 @@ class Predictor(BasePredictor):
         self,
         mode: str = Input(
             description="Mode",
-            choices=["wav2lip", "complete"]
+            choices=["wav2lip"]
         ),
         face_url: str = Input(
             description="Image of the face to render", 
@@ -162,24 +128,16 @@ class Predictor(BasePredictor):
         ),
         gfpgan: bool = Input(
             description="Whether to apply GFPGAN to the Wav2Lip output",
-            default=True,
+            default=False,
         ),
         gfpgan_upscale: int = Input(
             description="Upscale factor (only used if GFPGAN is enabled)",
             default=1,
             choices=[1, 2],
         ),
-        prompt: str = Input(
-            description="GPT-3 prompt",
+        intro_text: str = Input(
+            description="Text for introduction screen (optional)",
             default=None,
-        ),
-        max_tokens: int = Input(
-            description="Maximum number of tokens to generate with GPT-3",
-            default=150,
-        ),
-        temperature: float = Input(
-            description="Temperature for GPT-3",
-            default=0.9,
         ),
 
     ) -> Iterator[CogOutput]:
@@ -189,14 +147,9 @@ class Predictor(BasePredictor):
 
         if mode == "wav2lip":
             print(f"face_url: {face_url}, speech_url: {speech_url}")
-            output_file, face_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale)
-            yield CogOutput(file=output_file, name="wav2lip", thumbnail=face_file, attributes=None, progress=1.0, isFinal=True)
-            
-        elif mode == "complete":
-            print(f"prompt: {prompt}, max_tokens: {max_tokens}, temperature: {temperature}")
-            output_file, completion = run_complete(prompt, max_tokens, temperature)
-            attributes = {"completion": completion}
-            yield CogOutput(file=output_file, name=completion, thumbnail=None, attributes=attributes, progress=1.0, isFinal=True)
-            
+            output_file, face_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text)
+            name = intro_text if intro_text else "wav2lip"
+            yield CogOutput(file=output_file, name=name, thumbnail=face_file, attributes=None, progress=1.0, isFinal=True)
+                        
         else:
             raise Exception("Invalid mode")
