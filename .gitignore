@@ -1,4 +1,5 @@
 .env
+data
 data/*.*
 wav2lip_files/
 gfpgan/

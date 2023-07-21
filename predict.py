@@ -1,3 +1,6 @@
+# don't push DEBUG_MODE = True to Replicate!
+DEBUG_MODE = False
+
 from cog import BasePredictor, BaseModel, Path, Input
 import os
 from PIL import Image
@@ -10,9 +13,9 @@ os.environ["TORCH_HOME"] = "/src/.torch"
 DATA_DIR = Path('data')
 
 class CogOutput(BaseModel):
-    file: Path
+    files: list[Path]
     name: Optional[str] = None
-    thumbnail: Optional[Path] = None
+    thumbnails: Optional[list[Path]] = [None]
     attributes: Optional[dict] = None
     progress: Optional[float] = None
     isFinal: bool = False
@@ -59,7 +62,15 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text=None):
     
     result = os.system(cmd)
     if result != 0:
-        raise Exception("Wav2Lip failed")
+        #raise Exception("Wav2Lip failed")
+        print("Wav2Lip failed, let's just superimpose the image on the audio")
+        cmd = f'ffmpeg -y -loop 1 -i {face_file} -i {speech_file} \
+                -c:v libx264 -tune stillimage -shortest {output_file}'
+        result = os.system(cmd)
+        gfpgan = False
+        if result != 0:
+            raise Exception("ffmpeg 2 failed")
+        print("ffmpeg 2 finished")
 
     if gfpgan:
         temp_gfpgan_frames_dir = out_dir / 'frames_gfpgan'
@@ -108,6 +119,8 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text=None):
 
 class Predictor(BasePredictor):
 
+    GENERATOR_OUTPUT_TYPE = Path if DEBUG_MODE else CogOutput
+
     def setup(self):
         print("cog:setup")
         pass
@@ -140,7 +153,7 @@ class Predictor(BasePredictor):
             default=None,
         )
 
-    ) -> Iterator[CogOutput]:
+    ) -> Iterator[GENERATOR_OUTPUT_TYPE]:
 
         print("cog:predict")
         print(f"Running in {mode} mode")
@@ -149,7 +162,10 @@ class Predictor(BasePredictor):
             print(f"face_url: {face_url}, speech_url: {speech_url}")
             output_file, face_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text)
             name = intro_text if intro_text else "wav2lip"
-            yield CogOutput(file=output_file, name=name, thumbnail=face_file, attributes=None, progress=1.0, isFinal=True)
+            if DEBUG_MODE:
+                yield output_file
+            else:
+                yield CogOutput(files=[output_file], name=name, thumbnails=[face_file], attributes=None, progress=1.0, isFinal=True)
                         
         else:
             raise Exception("Invalid mode")
