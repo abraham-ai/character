@@ -7,6 +7,7 @@ from PIL import Image
 from typing import Iterator, Optional
 import tempfile
 import utils
+import cv2
 
 os.environ["TORCH_HOME"] = "/src/.torch"
 
@@ -20,24 +21,67 @@ class CogOutput(BaseModel):
     progress: Optional[float] = None
     isFinal: bool = False
 
-def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text=None):
-    if not face_url or not speech_url:  
-        raise Exception("Missing face or speech file")
 
+def download_face_file(face_url):
+    if not face_url:  
+        raise Exception("Missing face or speech file")
     try:
         ext = os.path.splitext(face_url)[1]
         face_file = utils.download(face_url, DATA_DIR, ext)
     except Exception as e:
         raise Exception(f"Error downloading image file: {e}")
+    return face_file
 
+
+def download_speech_file(speech_url):
+    if not speech_url:  
+        raise Exception("Missing face or speech file")
     try:
         speech_file = utils.download(speech_url, DATA_DIR, '.wav')
     except Exception as e:
         raise Exception(f"Error downloading speech file: {e}")
+    return speech_file
+
+
+def average_aspect_ratio(images):
+    total_aspect_ratio = 0.0
+    for img in images:
+        w, h = img.size
+        total_aspect_ratio += w / h
+    return total_aspect_ratio / len(images)
+
+
+def smallest_image_size(images):
+    min_w, min_h = float('inf'), float('inf')
+    for img in images:
+        w, h = img.size
+        min_w, min_h = min(min_w, w), min(min_h, h)
+    return min_w, min_h
+
+
+def resize_and_center_crop(img, target_width, target_height):
+    img_w, img_h = img.size
+    
+    # Scale down the image such that the smallest dimension fits the target size
+    scale_factor = min(target_width / img_w, target_height / img_h)
+    new_w = int(img_w * scale_factor)
+    new_h = int(img_h * scale_factor)
+    img = img.resize((new_w, new_h), Image.ANTIALIAS)
+    
+    # Center-crop
+    left = (new_w - target_width) / 2
+    top = (new_h - target_height) / 2
+    right = (new_w + target_width) / 2
+    bottom = (new_h + target_height) / 2
+    img = img.crop((left, top, right, bottom))
+
+    return img
+
+
+def run_wav2lip(face_file, speech_file, gfpgan, gfpgan_upscale, intro_text=None):
 
     # setup file paths
     out_dir = Path(tempfile.mkdtemp())
-    # out_dir = Path('results')
     temp_video_file = out_dir / 'wav2lip_temp.avi'
     temp_frames_dir = out_dir / 'frames'
     output_file = out_dir / 'output.mp4'
@@ -45,6 +89,7 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text=None):
     output_mode = 'frames' if gfpgan else 'audiovideo'
 
     # if it's a video, switch fps to video fps
+    ext = str(face_file).split('.')[-1]
     if ext.lower() in ['.mp4', '.mov', '.avi', '.wmv', '.mkv']:
         cap = cv2.VideoCapture(str(face_file))
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -69,8 +114,8 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text=None):
         result = os.system(cmd)
         gfpgan = False
         if result != 0:
-            raise Exception("ffmpeg 2 failed")
-        print("ffmpeg 2 finished")
+            raise Exception("ffmpeg failed")
+        print("ffmpeg finished")
 
     if gfpgan:
         temp_gfpgan_frames_dir = out_dir / 'frames_gfpgan'
@@ -112,9 +157,7 @@ def run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text=None):
     utils.try_delete(temp_video_file)
     utils.try_delete(temp_frames_dir)
 
-    face_file = Path(face_file)
-
-    return output_file, face_file
+    return output_file
 
 
 class Predictor(BasePredictor):
@@ -154,18 +197,58 @@ class Predictor(BasePredictor):
         )
 
     ) -> Iterator[GENERATOR_OUTPUT_TYPE]:
-
         print("cog:predict")
-        print(f"Running in {mode} mode")
+        print(f"Face_url: {face_url}, speech_url: {speech_url}")
 
-        if mode == "wav2lip":
-            print(f"face_url: {face_url}, speech_url: {speech_url}")
-            output_file, face_file = run_wav2lip(face_url, speech_url, gfpgan, gfpgan_upscale, intro_text)
-            name = intro_text if intro_text else "wav2lip"
-            if DEBUG_MODE:
-                yield output_file
-            else:
-                yield CogOutput(files=[output_file], name=name, thumbnails=[face_file], attributes=None, progress=1.0, isFinal=True)
-                        
+        # download face and speech files
+        face_downloads, speech_downloads = {}, {}
+        face_urls, speech_urls = str(face_url).split("|"), str(speech_url).split("|")
+        assert len(face_urls) == len(speech_urls), "Need same number of face and speech urls"
+        for face_url in face_urls:
+            if face_url not in face_downloads:
+                face_downloads[face_url] = download_face_file(face_url)
+        for speech_url in speech_urls:
+            if speech_url not in speech_downloads:
+                speech_downloads[speech_url] = download_speech_file(speech_url)
+
+        # Resize all faces to the same size
+        images = [Image.open(i) for i in list(face_downloads.values())]
+        avg_aspect_ratio = average_aspect_ratio(images)
+        min_w, min_h = smallest_image_size(images)
+        if min_w / min_h > avg_aspect_ratio:
+            target_height = min_h
+            target_width = int(target_height * avg_aspect_ratio)
         else:
-            raise Exception("Invalid mode")
+            target_width = min_w
+            target_height = int(target_width / avg_aspect_ratio)
+        for face_download in face_downloads:
+            pil_img = Image.open(face_downloads[face_download]).convert('RGB')
+            resized_img = resize_and_center_crop(pil_img, target_width, target_height)
+            resized_img_location = tempfile.mktemp(suffix='.png')
+            resized_img.save(resized_img_location)
+            face_downloads[face_download] = resized_img_location
+
+        # Run wav2lip on each segment
+        segments = []
+        for face_url, speech_url in zip(face_urls, speech_urls):
+            face_file = face_downloads[face_url]
+            speech_file = speech_downloads[speech_url]
+            output_file = run_wav2lip(face_file, speech_file, gfpgan, gfpgan_upscale, intro_text)
+            segments.append(output_file)
+            intro_text = False  # only do intro text on first segment
+
+        # Concatenate segments
+        if len(segments) > 1:
+            output_file = Path(tempfile.mktemp(suffix='.mp4'))
+            utils.concatenate_videos(*segments, output_file)
+        else:
+            output_file = segments[0]
+        
+        # Return results
+        if DEBUG_MODE:
+            yield output_file
+        else:
+            face_file = Path(face_file)
+            name = intro_text if intro_text else "wav2lip"
+            yield CogOutput(files=[output_file], name=name, thumbnails=[face_file], attributes=None, progress=1.0, isFinal=True)
+
