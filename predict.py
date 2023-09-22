@@ -174,7 +174,8 @@ class Predictor(BasePredictor):
         self,
         mode: str = Input(
             description="Mode",
-            choices=["wav2lip"]
+            choices=["wav2lip"],
+            default="wav2lip",
         ),
         face_url: str = Input(
             description="Image of the face to render", 
@@ -230,6 +231,8 @@ class Predictor(BasePredictor):
             ratio = (target_width * target_height) / MAX_PIXELS
             target_width = int(target_width / ratio)
             target_height = int(target_height / ratio)
+        target_width = target_width - (target_width % 2) # make sure even numbers
+        target_height = target_height - (target_height % 2)
         for face_download in face_downloads:
             pil_img = Image.open(face_downloads[face_download]).convert('RGB')
             resized_img = resize_and_center_crop(pil_img, target_width, target_height)
