@@ -1,5 +1,7 @@
 # don't push DEBUG_MODE = True to Replicate!
-DEBUG_MODE = False
+DEBUG_MODE = True
+
+MAX_PIXELS = 768 * 768
 
 from cog import BasePredictor, BaseModel, Path, Input
 import os
@@ -16,7 +18,7 @@ DATA_DIR = Path('data')
 class CogOutput(BaseModel):
     files: list[Path]
     name: Optional[str] = None
-    thumbnails: Optional[list[Path]] = [None]
+    thumbnails: Optional[list[Path]] = None
     attributes: Optional[dict] = None
     progress: Optional[float] = None
     isFinal: bool = False
@@ -200,6 +202,9 @@ class Predictor(BasePredictor):
         print("cog:predict")
         print(f"Face_url: {face_url}, speech_url: {speech_url}")
 
+        if mode != "wav2lip":
+            raise Exception(f"Unsupported mode: {mode}")
+
         # download face and speech files
         face_downloads, speech_downloads = {}, {}
         face_urls, speech_urls = str(face_url).split("|"), str(speech_url).split("|")
@@ -221,6 +226,10 @@ class Predictor(BasePredictor):
         else:
             target_width = min_w
             target_height = int(target_width / avg_aspect_ratio)
+        if target_width * target_height > MAX_PIXELS:
+            ratio = (target_width * target_height) / MAX_PIXELS
+            target_width = int(target_width / ratio)
+            target_height = int(target_height / ratio)
         for face_download in face_downloads:
             pil_img = Image.open(face_downloads[face_download]).convert('RGB')
             resized_img = resize_and_center_crop(pil_img, target_width, target_height)
