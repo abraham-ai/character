@@ -1,5 +1,5 @@
 # don't push DEBUG_MODE = True to Replicate!
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 MAX_PIXELS = 768 * 768
 
