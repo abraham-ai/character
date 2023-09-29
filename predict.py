@@ -185,11 +185,11 @@ class Predictor(BasePredictor):
             description="The audio file containing speech to be lip-synced",
             default=None,
         ),
-        width: str = Input(
+        width: int = Input(
             description="Override width for output (same as face_url if left blank)",
             default=None,
         ),
-        height: str = Input(
+        height: int = Input(
             description="Override height for output (same as face_url if left blank)",
             default=None,
         ),
