@@ -185,6 +185,14 @@ class Predictor(BasePredictor):
             description="The audio file containing speech to be lip-synced",
             default=None,
         ),
+        width: str = Input(
+            description="Override width for output (same as face_url if left blank)",
+            default=None,
+        ),
+        height: str = Input(
+            description="Override height for output (same as face_url if left blank)",
+            default=None,
+        ),
         gfpgan: bool = Input(
             description="Whether to apply GFPGAN to the Wav2Lip output",
             default=False,
@@ -218,24 +226,27 @@ class Predictor(BasePredictor):
                 speech_downloads[speech_url] = download_speech_file(speech_url)
 
         # Resize all faces to the same size
-        images = [Image.open(i) for i in list(face_downloads.values())]
-        avg_aspect_ratio = average_aspect_ratio(images)
-        min_w, min_h = smallest_image_size(images)
-        if min_w / min_h > avg_aspect_ratio:
-            target_height = min_h
-            target_width = int(target_height * avg_aspect_ratio)
-        else:
-            target_width = min_w
-            target_height = int(target_width / avg_aspect_ratio)
-        if target_width * target_height > MAX_PIXELS:
-            ratio = (target_width * target_height) / MAX_PIXELS
-            target_width = int(target_width / ratio)
-            target_height = int(target_height / ratio)
-        target_width = target_width - (target_width % 2) # make sure even numbers
-        target_height = target_height - (target_height % 2)
+        target_width = width
+        target_height = height
+        if not target_width or not target_height:
+            images = [Image.open(i) for i in list(face_downloads.values())]
+            avg_aspect_ratio = average_aspect_ratio(images)
+            min_w, min_h = smallest_image_size(images)
+            if min_w / min_h > avg_aspect_ratio:
+                target_height = min_h
+                target_width = int(target_height * avg_aspect_ratio)
+            else:
+                target_width = min_w
+                target_height = int(target_width / avg_aspect_ratio)
+            if target_width * target_height > MAX_PIXELS:
+                ratio = (target_width * target_height) / MAX_PIXELS
+                target_width = int(target_width / ratio)
+                target_height = int(target_height / ratio)
+            target_width = target_width - (target_width % 2) # make sure even numbers
+            target_height = target_height - (target_height % 2)
         for face_download in face_downloads:
             pil_img = Image.open(face_downloads[face_download]).convert('RGB')
-            resized_img = resize_and_center_crop(pil_img, target_width, target_height)
+            resized_img = resize_and_center_crop(pil_img, int(target_width), int(target_height))
             resized_img_location = tempfile.mktemp(suffix='.png')
             resized_img.save(resized_img_location)
             face_downloads[face_download] = resized_img_location
