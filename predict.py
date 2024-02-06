@@ -1,5 +1,5 @@
 # don't push DEBUG_MODE = True to Replicate!
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 MAX_PIXELS = 768 * 768
 
@@ -112,7 +112,7 @@ def run_wav2lip(face_file, speech_file, gfpgan, gfpgan_upscale, intro_text=None)
         #raise Exception("Wav2Lip failed")
         print("Wav2Lip failed, let's just superimpose the image on the audio")
         cmd = f'ffmpeg -y -loop 1 -i {face_file} -i {speech_file} \
-                -c:v libx264 -tune stillimage -shortest {output_file}'
+                -c:v libx264 -tune stillimage -pix_fmt yuv420p -c:a aac -b:a 128k -shortest {output_file}'
         result = os.system(cmd)
         gfpgan = False
         if result != 0:
@@ -126,7 +126,7 @@ def run_wav2lip(face_file, speech_file, gfpgan, gfpgan_upscale, intro_text=None)
         cmd = f'python /GFPGAN/inference_gfpgan.py \
                 --model_path gfpgan \
                 -o {temp_gfpgan_frames_dir} \
-                -v 1.3 -s {gfpgan_upscale} --bg_upsampler none \
+                -v 1.3 -s {gfpgan_upscale} --bg_upsampler none --align \
                 -i "{temp_frames_dir}" '
 
         result = os.system(cmd)
