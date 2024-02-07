@@ -20,15 +20,24 @@ build:
     - "openai==0.25.0"
     - "basicsr>=1.4.2"
     - "facexlib>=0.2.5"
-    - "lmdb"
+    - "lmdb==1.4.1"
     - "pyyaml"
-    - "tb-nightly"
-    - "yapf"
-    - "torchvision"
-    - "realesrgan"
-    - "moviepy"
-    - "gizeh"
-    - "cairocffi"
+    - "tb-nightly==2.16.0a20240206"
+    - "yapf==0.40.2"
+    - "torchvision==0.10.0"
+    - "realesrgan==0.3.0"
+    - "moviepy==1.0.3"
+    - "gizeh==0.1.11"
+    - "cairocffi==1.6.1"
+
+
+
+
+
+
+
+
+
 
   pre_install:    
     - git clone https://github.com/genekogan/Wav2Lip && echo 12345
