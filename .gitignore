@@ -8,6 +8,7 @@ __pycache__/
 temp/
 wav2lip-hq/
 Wav2Lip/
+GFPGAN/
 out/
 logs.log
 log.txt
