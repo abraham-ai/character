@@ -1,7 +1,7 @@
 # don't push DEBUG_MODE = True to Replicate!
 DEBUG_MODE = False
 
-MAX_PIXELS = 768 * 768
+MAX_PIXELS = 1024 * 1024
 
 from cog import BasePredictor, BaseModel, Path, Input
 import os

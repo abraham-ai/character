@@ -30,10 +30,8 @@ build:
     - "gizeh==0.1.11"
     - "cairocffi==1.6.1"
 
-  pre_install:  
+  pre_install:
     - pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html  
-    - git clone https://github.com/genekogan/Wav2Lip && echo 12345
-    - git clone https://github.com/genekogan/GFPGAN && echo 123456
 
 predict: "predict.py:Predictor"
 
