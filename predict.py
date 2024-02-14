@@ -124,7 +124,7 @@ def run_wav2lip(face_file, speech_file, gfpgan, gfpgan_upscale, intro_text=None)
         temp_gfpgan_frames_dir = out_dir / 'frames_gfpgan'
         os.makedirs(temp_gfpgan_frames_dir, exist_ok=True)
 
-        cmd = f'python /GFPGAN/inference_gfpgan.py \
+        cmd = f'python GFPGAN/inference_gfpgan.py \
                 --model_path gfpgan \
                 -o {temp_gfpgan_frames_dir} \
                 -v 1.3 -s {gfpgan_upscale} --bg_upsampler none \
