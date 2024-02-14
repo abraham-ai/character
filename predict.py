@@ -2,6 +2,7 @@
 DEBUG_MODE = False
 
 MAX_PIXELS = 1024 * 1024
+# MAX_PIXELS = 768 * 768
 
 from cog import BasePredictor, BaseModel, Path, Input
 import os
@@ -28,8 +29,8 @@ def download_face_file(face_url):
     if not face_url:  
         raise Exception("Missing face or speech file")
     try:
-        ext = os.path.splitext(face_url)[1]
-        face_file = utils.download(face_url, DATA_DIR, ext)
+        #ext = os.path.splitext(face_url)[1]
+        face_file = utils.download(face_url, DATA_DIR)
     except Exception as e:
         raise Exception(f"Error downloading image file: {e}")
     return face_file
@@ -39,7 +40,7 @@ def download_speech_file(speech_url):
     if not speech_url:  
         raise Exception("Missing face or speech file")
     try:
-        speech_file = utils.download(speech_url, DATA_DIR, '.wav')
+        speech_file = utils.download(speech_url, DATA_DIR)
     except Exception as e:
         raise Exception(f"Error downloading speech file: {e}")
     return speech_file
@@ -97,7 +98,7 @@ def run_wav2lip(face_file, speech_file, gfpgan, gfpgan_upscale, intro_text=None)
         fps = cap.get(cv2.CAP_PROP_FPS)
 
     # run wav2lip
-    cmd = f'python /Wav2Lip/inference.py \
+    cmd = f'python Wav2Lip/inference.py \
             --output "{output_mode}" \
             --checkpoint_path "wav2lip_files/wav2lip_gan.pth" \
             --fps {fps} \
@@ -240,6 +241,7 @@ class Predictor(BasePredictor):
                 target_height = int(target_width / avg_aspect_ratio)
             if target_width * target_height > MAX_PIXELS:
                 ratio = (target_width * target_height) / MAX_PIXELS
+                ratio = ratio ** 0.5
                 target_width = int(target_width / ratio)
                 target_height = int(target_height / ratio)
             target_width = target_width - (target_width % 2) # make sure even numbers

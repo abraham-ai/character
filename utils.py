@@ -8,10 +8,8 @@ import moviepy.editor as mp
 import gizeh as gz
 
 
-def download(url, folder, ext):
+def download(url, folder):
     filename = url.split('/')[-1]
-    if not filename.endswith(ext):
-        filename += ext
     filepath = folder / filename
     if filepath.exists():
         return filepath
